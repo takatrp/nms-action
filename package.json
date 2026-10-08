@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "scripts": {"test": "node --test", "build": "node scripts/build.mjs", "start": "node scripts/server.mjs", "check": "node --check src/core.js && node --check src/app.js && node --check src/tactics.js && node --check src/frictions.js && node --check src/storage.js && node --check src/forms.js"},
+  "scripts": {"test": "node --test", "build": "node scripts/build.mjs", "start": "node scripts/server.mjs", "check": "node --check src/demo.js && node --check src/core.js && node --check src/app.js && node --check src/tactics.js && node --check src/frictions.js && node --check src/storage.js && node --check src/forms.js"},
   "engines": {"node": ">=22"}
 }
 

@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import * as demo from '../src/demo.js';
 import * as core from '../src/core.js';
 import * as frictions from '../src/frictions.js';
 import * as tactics from '../src/tactics.js';
@@ -12,7 +13,7 @@ function app(){
  const nodes=new Map();
  const stub=()=>({innerHTML:'',querySelector:()=>stub(),querySelectorAll:()=>[],addEventListener(){},showModal(){},close(){},classList:{add(){},remove(){}},dataset:{}});
  const document={querySelector:key=>{if(!nodes.has(key))nodes.set(key,stub());return nodes.get(key);},addEventListener(){}};
- const ctx=vm.createContext({...core,...frictions,...tactics,...forms,h:core.escapeHtml,document,window:{addEventListener(){}},location:{hash:''},localStorage:{getItem:()=>null},navigator:{},structuredClone,FormData,console,setTimeout,clearTimeout});
+ const ctx=vm.createContext({...demo,...core,...frictions,...tactics,...forms,h:core.escapeHtml,document,window:{addEventListener(){}},location:{hash:''},sessionStorage:{getItem:()=>null},localStorage:{getItem:()=>null},navigator:{},structuredClone,FormData,console,setTimeout,clearTimeout});
  vm.runInContext(source,ctx);return {ctx,nodes,run:code=>vm.runInContext(code,ctx)};
 }
 function controls(html){
