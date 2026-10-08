@@ -13,7 +13,7 @@ function store(entries=[]){const values=new Map(entries),writes=[];return {value
 function queue(){let tail=Promise.resolve();return {request:(_key,fn)=>{const result=tail.then(fn);tail=result.catch(()=>{});return result;}};}
 function app(storage,session=store(),locks=queue()){
  const nodes=new Map(),events=new Map();
- const stub=()=>({innerHTML:'',textContent:'',value:'',hidden:false,querySelector:()=>stub(),querySelectorAll:()=>[],addEventListener(){},showModal(){},close(){},click(){},classList:{add(){},remove(){}},dataset:{}});
+ function stub(){const children=new Map();return {innerHTML:'',textContent:'',value:'',hidden:false,querySelector:k=>{if(!children.has(k))children.set(k,stub());return children.get(k);},querySelectorAll:()=>[],addEventListener(){},showModal(){},close(){},click(){},classList:{add(){},remove(){}},dataset:{}};}
  const document={querySelector:key=>{if(!nodes.has(key))nodes.set(key,stub());return nodes.get(key);},addEventListener(){}};
  const ctx=vm.createContext({...core,...demo,...frictions,...tactics,...forms,saveState,h:core.escapeHtml,document,window:{addEventListener:(k,f)=>events.set(k,f)},location:{hash:''},localStorage:storage,sessionStorage:session,navigator:{locks},structuredClone,FormData,console,setTimeout:()=>0,clearTimeout(){}});
  vm.runInContext(source,ctx);return {nodes,ctx,events,run:code=>vm.runInContext(code,ctx)};
@@ -46,7 +46,7 @@ test('デモ入力サイズもUTF-8の5MB上限で拒否する',()=>assert.throw
 test('デモ開始・編集・設定変更・終了は通常キーの値を一切変えない',async()=>{
  const storage=fixture(),before=realSnapshot(storage),a=app(storage);
  await a.run('switchMode(true)');await a.run("change(s=>s.candidates[0].alias='デモ編集')");
- a.nodes.get('#staleDays').value='44';a.run("actions['stale-save']()");
+ a.run("$('#staleDays').value='44'");a.run("actions['stale-save']()");
  a.nodes.get('#scopeSelect').onchange({target:{value:'scope-main'}});
  assert.equal(a.nodes.get('#demoBanner').hidden,false);assert.match(a.nodes.get('#demoBanner').innerHTML,/正式実績/);
  assert.equal(realSnapshot(storage),before);await a.run('switchMode(false)');
@@ -119,4 +119,37 @@ test('すべてのデモ画面と編集・確認ダイアログにデモ表示�
  a.run("editCandidate('demo-case-b')");assert.match(a.nodes.get('#editor').innerHTML,/【デモ】/);
  a.run("actions['demo-reset']()");assert.match(a.nodes.get('#confirmDialog').innerHTML,/【デモ】/);
  a.run("planSummary('demo-plan-b')");assert.match(a.nodes.get('#editor').innerHTML,/【デモ】/);
+});
+
+test('通常モードのデモJSON読込は復元確認前に拒否して元データを保持する',async()=>{
+ const storage=fixture(),before=realSnapshot(storage),a=app(storage);
+ await a.nodes.get('#importFile').onchange({target:{files:[{size:500,text:async()=>demo.serializeDemo(demo.createDemoState())}]}});
+ assert.match(a.nodes.get('#toast').textContent,/読み込めません/);assert.equal(a.nodes.get('#confirmDialog').innerHTML,'');assert.equal(realSnapshot(storage),before);
+});
+test('開始確認と終了のボタンが動き、デモ出力名とJSON識別子が一致する',async()=>{
+ const storage=fixture(),a=app(storage);a.ctx.testDownloads=[];a.run('download=(text,name)=>testDownloads.push({text,name})');
+ await a.nodes.get('#demoBtn').onclick();assert.match(a.nodes.get('#confirmDialog').innerHTML,/デモ開始/);
+ await a.nodes.get('#confirmDialog').querySelector('[data-confirm]').onclick();
+ a.run('backup()');assert.match(a.ctx.testDownloads[0].name,/nms-action-demo-/);assert.equal(JSON.parse(a.ctx.testDownloads[0].text).app,demo.DEMO_APP);
+ await a.nodes.get('#demoBtn').onclick();a.run('backup()');assert.match(a.ctx.testDownloads[1].name,/nms-action-backup-/);assert.equal(JSON.parse(a.ctx.testDownloads[1].text).app,core.APP);
+});
+test('デモJSONの復元確認はデモキーだけを置換する',async()=>{
+ const storage=fixture(),before=realSnapshot(storage),a=app(storage);await a.run('switchMode(true)');
+ const restored=demo.createDemoState();restored.candidates[0].alias='デモ復元候補';
+ await a.nodes.get('#importFile').onchange({target:{files:[{size:500,text:async()=>demo.serializeDemo(restored)}]}});
+ assert.match(a.nodes.get('#confirmDialog').innerHTML,/【デモ】/);
+ await a.nodes.get('#confirmDialog').querySelector('[data-confirm]').onclick();
+ assert.equal(a.run('state.candidates[0].alias'),'デモ復元候補');assert.equal(realSnapshot(storage),before);
+});
+test('デモリセット確認は架空サンプルを再生成し通常データを保持する',async()=>{
+ const storage=fixture(),before=realSnapshot(storage),a=app(storage);await a.run('switchMode(true)');await a.run("change(s=>s.candidates[0].alias='デモ変更')");
+ a.run("actions['demo-reset']()");await a.nodes.get('#confirmDialog').querySelector('[data-confirm]').onclick();
+ assert.equal(a.run('state.candidates[0].alias'),'デモ候補A（面談前）');assert.equal(a.run('state.candidates[0].dueDate'),core.today());assert.equal(realSnapshot(storage),before);
+});
+test('切替は振り返り下書きとフィルタを消し、旧確認の実行を拒否する',async()=>{
+ const storage=fixture(),before=realSnapshot(storage),a=app(storage);
+ a.run("pendingReview={title:'通常の下書き'};search='通常検索';statusFilter='member';ask('旧操作','',()=>commit(initialState()))");
+ const oldConfirm=a.nodes.get('#confirmDialog').querySelector('[data-confirm]').onclick;
+ await a.run('switchMode(true)');assert.equal(a.run('pendingReview'),null);assert.equal(a.run('search'),'');assert.equal(a.run('statusFilter'),'all');
+ await oldConfirm();assert.match(a.nodes.get('#confirmDialog').querySelector('.form-error').textContent,/モードが切り替わりました/);assert.equal(realSnapshot(storage),before);
 });
