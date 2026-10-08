@@ -105,12 +105,12 @@ test('デモのタスク完了は候補段階・入会日・正式実績を変�
 test('ファイル読込中のモード切替は復元確認を開かず取り消す',async()=>{
  const storage=fixture(),a=app(storage);let resolve;const file={size:50,text:()=>new Promise(r=>resolve=r)};
  const pending=a.nodes.get('#importFile').onchange({target:{files:[file]}});await a.run('switchMode(true)');resolve(core.serializeBackup(core.initialState()));await pending;
- assert.equal(a.nodes.get('#confirmDialog').innerHTML,'');assert.match(a.nodes.get('#toast').textContent,/モードが切り替わりました/);
+ assert.equal(a.nodes.get('#confirmDialog')?.innerHTML??'','');assert.match(a.nodes.get('#toast').textContent,/モードが切り替わりました/);
 });
 test('デモの通常JSON・設定JSON読込は確認前に拒否する',async()=>{
  const storage=fixture(),a=app(storage);await a.run('switchMode(true)');const before=storage.getItem(demo.DEMO_KEY);
  await a.nodes.get('#importFile').onchange({target:{files:[{size:500,text:async()=>core.serializeBackup(core.initialState())}]}});
- assert.match(a.nodes.get('#toast').textContent,/デモ専用JSON/);assert.equal(a.nodes.get('#confirmDialog').innerHTML,'');
+ assert.match(a.nodes.get('#toast').textContent,/デモ専用JSON/);assert.equal(a.nodes.get('#confirmDialog')?.innerHTML??'','');
  assert.throws(()=>a.run("actions['settings-import']()"),/通常モード/);assert.equal(storage.getItem(demo.DEMO_KEY),before);
 });
 test('すべてのデモ画面と編集・確認ダイアログにデモ表示が残る',async()=>{
@@ -124,7 +124,7 @@ test('すべてのデモ画面と編集・確認ダイアログにデモ表示�
 test('通常モードのデモJSON読込は復元確認前に拒否して元データを保持する',async()=>{
  const storage=fixture(),before=realSnapshot(storage),a=app(storage);
  await a.nodes.get('#importFile').onchange({target:{files:[{size:500,text:async()=>demo.serializeDemo(demo.createDemoState())}]}});
- assert.match(a.nodes.get('#toast').textContent,/読み込めません/);assert.equal(a.nodes.get('#confirmDialog').innerHTML,'');assert.equal(realSnapshot(storage),before);
+ assert.match(a.nodes.get('#toast').textContent,/読み込めません/);assert.equal(a.nodes.get('#confirmDialog')?.innerHTML??'','');assert.equal(realSnapshot(storage),before);
 });
 test('開始確認と終了のボタンが動き、デモ出力名とJSON識別子が一致する',async()=>{
  const storage=fixture(),a=app(storage);a.ctx.testDownloads=[];a.run('download=(text,name)=>testDownloads.push({text,name})');
